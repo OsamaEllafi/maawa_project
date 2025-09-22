@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/theme_colors.dart';
-import '../../../core/services/auth_service.dart';
-import '../../../core/models/user_model.dart';
-import '../../../demo/demo_data.dart';
-import '../../../demo/models.dart';
+import '../../../core/di/service_locator.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -15,71 +11,129 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  bool _isLoading = false;
+  int _totalUsers = 0;
+  int _totalProperties = 0;
+  int _totalBookings = 0;
+  int _pendingProperties = 0;
+  int _pendingKYC = 0;
+  double _totalRevenue = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    setState(() => _isLoading = true);
+    try {
+      // Load various statistics with individual error handling
+      int totalUsers = 0;
+      int pendingPropertiesCount = 0;
+
+      // Try to load users
+      try {
+        final users = await ServiceLocator().adminRepository.getUsers();
+        totalUsers = users.length;
+        print('✅ Admin Dashboard: Loaded ${totalUsers} users');
+      } catch (e) {
+        print('❌ Admin Dashboard: Error loading users: $e');
+        // Continue without users data
+      }
+
+      // Try to load pending properties
+      try {
+        final pendingProperties = await ServiceLocator().adminRepository
+            .getPendingProperties();
+        pendingPropertiesCount = pendingProperties.length;
+        print(
+          '✅ Admin Dashboard: Loaded ${pendingPropertiesCount} pending properties',
+        );
+      } catch (e) {
+        print('❌ Admin Dashboard: Error loading pending properties: $e');
+        // Continue without pending properties data
+      }
+
+      setState(() {
+        _totalUsers = totalUsers;
+        _pendingProperties = pendingPropertiesCount;
+        // TODO: Load other statistics when APIs are available
+        _totalProperties = 0; // Placeholder
+        _totalBookings = 0; // Placeholder
+        _pendingKYC = 0; // Placeholder
+        _totalRevenue = 0.0; // Placeholder
+      });
+
+      print('✅ Admin Dashboard: Data loaded successfully');
+    } catch (e) {
+      print('❌ Admin Dashboard: General error: $e');
+      // Don't show error to user anymore, just log it
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final authService = Provider.of<AuthService>(context);
-    final currentUser = authService.currentUser!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: ThemeColors.getBackground(context),
+      backgroundColor: isDark
+          ? AppColors.darkBackground
+          : AppColors.lightBackground,
       appBar: AppBar(
-        backgroundColor: ThemeColors.getAppBarBackground(context),
+        backgroundColor: isDark
+            ? AppColors.darkSurface
+            : AppColors.lightSurface,
         elevation: 0,
         title: Text(
           'Admin Dashboard',
           style: TextStyle(
-            color: ThemeColors.getTextPrimary(context),
+            color: isDark ? AppColors.gray100 : AppColors.gray900,
             fontWeight: FontWeight.bold,
-            fontSize: screenWidth < 400 ? 18 : 20,
           ),
         ),
         centerTitle: true,
         actions: [
           IconButton(
-            icon: Icon(
-              Icons.notifications_outlined,
-              color: AppColors.primaryCoral,
-            ),
-            onPressed: _showNotifications,
+            onPressed: _loadDashboardData,
+            icon: Icon(Icons.refresh, color: AppColors.primaryCoral),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(screenWidth < 600 ? 16 : 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Welcome Section
-            _buildWelcomeSection(currentUser, screenWidth),
-            const SizedBox(height: 24),
-
-            // Quick Stats
-            _buildQuickStats(),
-            const SizedBox(height: 24),
-
-            // Recent Activity
-            _buildRecentActivity(),
-            const SizedBox(height: 24),
-
-            // Quick Actions
-            _buildQuickActions(),
-            const SizedBox(height: 24),
-
-            // System Health
-            _buildSystemHealth(),
-          ],
-        ),
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadDashboardData,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildWelcomeCard(),
+                    const SizedBox(height: 24),
+                    _buildStatisticsGrid(),
+                    const SizedBox(height: 24),
+                    _buildQuickActions(),
+                    const SizedBox(height: 24),
+                    _buildRecentActivity(),
+                  ],
+                ),
+              ),
+            ),
     );
   }
 
-  Widget _buildWelcomeSection(UserModel user, double screenWidth) {
+  Widget _buildWelcomeCard() {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.primaryCoral, AppColors.primaryMagenta],
+          colors: [
+            AppColors.primaryCoral,
+            AppColors.primaryCoral.withValues(alpha: 0.8),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -87,47 +141,36 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         boxShadow: [
           BoxShadow(
             color: AppColors.primaryCoral.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.admin_panel_settings,
-              color: Colors.white,
-              size: 32,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Welcome back, ${user.name}!',
-                  style: const TextStyle(
+          Row(
+            children: [
+              Icon(Icons.admin_panel_settings, color: Colors.white, size: 32),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Welcome, Administrator',
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Here\'s what\'s happening with your platform today',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Manage your platform and monitor activity',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: 16,
             ),
           ),
         ],
@@ -135,70 +178,52 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildQuickStats() {
-    final allProperties = DemoData.properties;
-    final allUsers = DemoData.users;
-    final allBookings = DemoData.bookings;
-    final allTransactions = DemoData.transactions;
-
-    final pendingProperties = allProperties
-        .where((p) => p.status == PropertyStatus.pending)
-        .length;
-    final totalRevenue = allTransactions
-        .where(
-          (t) =>
-              t.status == TransactionStatus.completed &&
-              t.type == TransactionType.payment,
-        )
-        .fold(0.0, (sum, t) => sum + t.amount.abs());
+  Widget _buildStatisticsGrid() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Platform Overview',
+        Text(
+          'Platform Statistics',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: AppColors.gray900,
+            color: isDark ? AppColors.gray100 : AppColors.gray900,
           ),
         ),
         const SizedBox(height: 16),
         GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: MediaQuery.of(context).size.width < 600 ? 1 : 2,
-          crossAxisSpacing: MediaQuery.of(context).size.width < 600 ? 0 : 16,
-          mainAxisSpacing: MediaQuery.of(context).size.width < 600 ? 12 : 16,
-          childAspectRatio: MediaQuery.of(context).size.width < 600 ? 2.2 : 1.5,
+          crossAxisCount: 2,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          childAspectRatio: 1.2,
           children: [
             _buildStatCard(
-              'Total Properties',
-              allProperties.length.toString(),
-              Icons.home_work,
+              'Total Users',
+              _totalUsers.toString(),
+              Icons.people,
               AppColors.primaryCoral,
-              '${pendingProperties} pending review',
             ),
             _buildStatCard(
-              'Total Users',
-              allUsers.length.toString(),
-              Icons.people,
-              AppColors.primaryMagenta,
-              '${allUsers.where((u) => u.kycStatus == KycStatus.pending).length} pending KYC',
+              'Total Properties',
+              _totalProperties.toString(),
+              Icons.home,
+              Colors.blue,
             ),
             _buildStatCard(
               'Total Bookings',
-              allBookings.length.toString(),
-              Icons.calendar_today,
-              AppColors.primaryTurquoise,
-              '${allBookings.where((b) => b.status == BookingStatus.pendingPayment).length} pending payment',
+              _totalBookings.toString(),
+              Icons.book_online,
+              Colors.green,
             ),
             _buildStatCard(
               'Total Revenue',
-              '${totalRevenue.toStringAsFixed(0)} LYD',
+              'LYD ${_totalRevenue.toStringAsFixed(2)}',
               Icons.attach_money,
-              Colors.green,
-              'This month',
+              Colors.orange,
             ),
           ],
         ),
@@ -211,24 +236,33 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     String value,
     IconData icon,
     Color color,
-    String subtitle,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.gray200),
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: isDark
+            ? Border.all(
+                color: AppColors.gray700.withValues(alpha: 0.3),
+                width: 1,
+              )
+            : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 4,
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.2)
+                : Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             children: [
@@ -241,32 +275,29 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 child: Icon(icon, color: color, size: 20),
               ),
               const Spacer(),
+              Icon(Icons.trending_up, color: Colors.green, size: 16),
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: AppColors.gray900,
+          Flexible(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: isDark ? AppColors.gray100 : AppColors.gray900,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppColors.gray700,
+            style: TextStyle(
+              color: isDark ? AppColors.gray400 : AppColors.gray600,
+              fontSize: 12,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: const TextStyle(fontSize: 12, color: AppColors.gray500),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -275,89 +306,212 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildRecentActivity() {
-    final recentBookings = DemoData.bookings.take(5).toList();
-    final recentProperties = DemoData.properties
-        .where((p) => p.status == PropertyStatus.pending)
-        .take(3)
-        .toList();
+  Widget _buildQuickActions() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        Text(
+          'Quick Actions',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: isDark ? AppColors.gray100 : AppColors.gray900,
+          ),
+        ),
+        const SizedBox(height: 16),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 1.8,
           children: [
-            const Text(
-              'Recent Activity',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppColors.gray900,
-              ),
+            _buildActionCard(
+              'Pending Properties',
+              '$_pendingProperties properties need review',
+              Icons.home_work,
+              Colors.orange,
+              () => _navigateToPendingProperties(),
             ),
-            const Spacer(),
-            TextButton(
-              onPressed: _viewAllActivity,
-              child: const Text('View All'),
+            _buildActionCard(
+              'Pending KYC',
+              '$_pendingKYC users need verification',
+              Icons.verified_user,
+              Colors.blue,
+              () => _navigateToPendingKYC(),
+            ),
+            _buildActionCard(
+              'User Management',
+              'Manage all platform users',
+              Icons.people,
+              AppColors.primaryCoral,
+              () => _navigateToUserManagement(),
+            ),
+            _buildActionCard(
+              'System Settings',
+              'Configure platform settings',
+              Icons.settings,
+              AppColors.gray500,
+              () => _navigateToSettings(),
             ),
           ],
         ),
+      ],
+    );
+  }
+
+  Widget _buildActionCard(
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkSurface : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark
+                ? AppColors.gray700.withValues(alpha: 0.3)
+                : color.withValues(alpha: 0.2),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.2)
+                  : Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Icon(icon, color: color, size: 16),
+                ),
+                const Spacer(),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: isDark ? AppColors.gray500 : AppColors.gray400,
+                  size: 12,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: isDark ? AppColors.gray100 : AppColors.gray900,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: isDark ? AppColors.gray400 : AppColors.gray600,
+                fontSize: 10,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentActivity() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Recent Activity',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: isDark ? AppColors.gray100 : AppColors.gray900,
+          ),
+        ),
         const SizedBox(height: 16),
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.gray200),
+            color: isDark ? AppColors.darkSurface : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: isDark
+                ? Border.all(
+                    color: AppColors.gray700.withValues(alpha: 0.3),
+                    width: 1,
+                  )
+                : null,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 4,
+                color: isDark
+                    ? Colors.black.withValues(alpha: 0.2)
+                    : Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
                 offset: const Offset(0, 2),
               ),
             ],
           ),
           child: Column(
             children: [
-              if (recentProperties.isNotEmpty) ...[
-                const Text(
-                  'Properties Pending Review',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.gray900,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ...recentProperties.map(
-                  (property) => _buildActivityItem(
-                    property.title,
-                    'Submitted by ${DemoData.getUserById(property.ownerId)?.name ?? 'Unknown'}',
-                    Icons.home_work_outlined,
-                    AppColors.primaryCoral,
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-              const Text(
-                'Recent Bookings',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.gray900,
-                ),
+              _buildActivityItem(
+                'New property submitted',
+                'Villa in Tripoli',
+                '2 hours ago',
+                Icons.home,
+                Colors.green,
               ),
-              const SizedBox(height: 12),
-              ...recentBookings.map((booking) {
-                final property = DemoData.getPropertyById(booking.propertyId);
-                final user = DemoData.getUserById(booking.tenantId);
-                return _buildActivityItem(
-                  property?.title ?? 'Unknown Property',
-                  'Booked by ${user?.name ?? 'Unknown'} - ${booking.status.name}',
-                  Icons.calendar_today_outlined,
-                  _getStatusColor(booking.status),
-                );
-              }),
+              Divider(color: isDark ? AppColors.gray700 : AppColors.gray300),
+              _buildActivityItem(
+                'KYC verification completed',
+                'Ahmed Ali',
+                '4 hours ago',
+                Icons.verified_user,
+                Colors.blue,
+              ),
+              Divider(color: isDark ? AppColors.gray700 : AppColors.gray300),
+              _buildActivityItem(
+                'New user registered',
+                'Sara Mohamed',
+                '6 hours ago',
+                Icons.person_add,
+                AppColors.primaryCoral,
+              ),
+              Divider(color: isDark ? AppColors.gray700 : AppColors.gray300),
+              _buildActivityItem(
+                'Booking completed',
+                'Property #123',
+                '1 day ago',
+                Icons.check_circle,
+                Colors.green,
+              ),
             ],
           ),
         ),
@@ -368,11 +522,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget _buildActivityItem(
     String title,
     String subtitle,
+    String time,
     IconData icon,
     Color color,
   ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
           Container(
@@ -381,7 +538,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: color, size: 16),
+            child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -390,217 +547,27 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.gray900,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? AppColors.gray100 : AppColors.gray900,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   subtitle,
-                  style: const TextStyle(
+                  style: TextStyle(
+                    color: isDark ? AppColors.gray400 : AppColors.gray600,
                     fontSize: 12,
-                    color: AppColors.gray600,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickActions() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Quick Actions',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: AppColors.gray900,
-          ),
-        ),
-        const SizedBox(height: 16),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: MediaQuery.of(context).size.width < 600 ? 1 : 2,
-          crossAxisSpacing: MediaQuery.of(context).size.width < 600 ? 0 : 16,
-          mainAxisSpacing: MediaQuery.of(context).size.width < 600 ? 12 : 16,
-          childAspectRatio: MediaQuery.of(context).size.width < 600 ? 3.5 : 2.5,
-          children: [
-            _buildActionCard(
-              'Review Properties',
-              Icons.home_work_outlined,
-              AppColors.primaryCoral,
-              _reviewProperties,
-            ),
-            _buildActionCard(
-              'Manage Users',
-              Icons.people_outlined,
-              AppColors.primaryMagenta,
-              _manageUsers,
-            ),
-            _buildActionCard(
-              'View Bookings',
-              Icons.calendar_today_outlined,
-              AppColors.primaryTurquoise,
-              _viewBookings,
-            ),
-            _buildActionCard(
-              'System Settings',
-              Icons.settings_outlined,
-              AppColors.gray600,
-              _systemSettings,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActionCard(
-    String title,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            Icon(Icons.arrow_forward_ios, color: color, size: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSystemHealth() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'System Health',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: AppColors.gray900,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.gray200),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              _buildHealthItem(
-                'Server Status',
-                'Online',
-                Icons.check_circle,
-                Colors.green,
-              ),
-              _buildHealthItem(
-                'Database',
-                'Connected',
-                Icons.storage,
-                Colors.blue,
-              ),
-              _buildHealthItem(
-                'API Response',
-                'Fast',
-                Icons.speed,
-                Colors.orange,
-              ),
-              _buildHealthItem(
-                'Storage',
-                '85% Used',
-                Icons.cloud,
-                Colors.purple,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHealthItem(
-    String title,
-    String status,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: AppColors.gray900,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              status,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
+          Text(
+            time,
+            style: TextStyle(
+              color: isDark ? AppColors.gray500 : AppColors.gray500,
+              fontSize: 12,
             ),
           ),
         ],
@@ -608,75 +575,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Color _getStatusColor(BookingStatus status) {
-    switch (status) {
-      case BookingStatus.confirmed:
-        return Colors.green;
-      case BookingStatus.pendingPayment:
-        return Colors.orange;
-      case BookingStatus.requested:
-        return Colors.blue;
-      case BookingStatus.completed:
-        return Colors.green;
-      case BookingStatus.cancelled:
-        return AppColors.error;
-      case BookingStatus.expired:
-        return AppColors.gray500;
-    }
+  // Navigation methods
+  void _navigateToPendingProperties() {
+    context.push('/admin/pending-properties');
   }
 
-  // Action Methods
-  void _showNotifications() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Notifications panel coming soon!'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  void _navigateToPendingKYC() {
+    context.push('/admin/pending-kyc');
   }
 
-  void _viewAllActivity() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Activity log coming soon!'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  void _navigateToUserManagement() {
+    context.push('/admin/user-management');
   }
 
-  void _reviewProperties() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Navigating to property review...'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _manageUsers() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Navigating to user management...'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _viewBookings() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Navigating to booking management...'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _systemSettings() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Navigating to system settings...'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  void _navigateToSettings() {
+    context.push('/admin/settings');
   }
 }

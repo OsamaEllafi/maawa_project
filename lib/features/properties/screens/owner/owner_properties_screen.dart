@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/services/auth_service.dart';
+import '../../../../core/di/service_locator.dart';
 import '../../../../core/widgets/gradient_button.dart';
 import '../../../../demo/demo_data.dart';
 import '../../../../demo/models.dart';
@@ -39,11 +39,11 @@ class _OwnerPropertiesScreenState extends State<OwnerPropertiesScreen>
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final authService = Provider.of<AuthService>(context);
-    final currentUser = authService.currentUser!;
+    final authProvider = Provider.of<AuthProvider>(context);
+    final currentUser = authProvider.currentUser!;
     
     // Get owner's properties
-    final allProperties = DemoData.getPropertiesByOwner(currentUser.id);
+    final allProperties = DemoData.getPropertiesByOwner(currentUser.uuid);
     
     // Calculate analytics
     final publishedProperties = allProperties.where((p) => p.status == PropertyStatus.published).length;

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/services/auth_service.dart';
-import '../../core/models/user_model.dart';
+import '../../core/di/service_locator.dart';
+import '../../domain/user/entities/user.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
 import 'bottom_nav.dart';
@@ -15,9 +15,9 @@ class MainScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AuthService>(
-      builder: (context, authService, _) {
-        final user = authService.currentUser;
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, _) {
+        final user = authProvider.currentUser;
 
         // Show different layouts based on user role
         if (user == null) {
@@ -142,9 +142,9 @@ class MainScaffold extends StatelessWidget {
           // Footer
           Container(
             padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Consumer<AuthService>(
-              builder: (context, authService, _) {
-                final user = authService.currentUser;
+            child: Consumer<AuthProvider>(
+              builder: (context, authProvider, _) {
+                final user = authProvider.currentUser;
                 return Row(
                   children: [
                     CircleAvatar(

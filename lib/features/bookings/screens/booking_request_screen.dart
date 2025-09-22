@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../core/widgets/gradient_button.dart';
-import '../../../core/services/auth_service.dart';
+import '../../../core/di/service_locator.dart';
 import '../../../demo/demo_data.dart';
 import '../../../demo/models.dart';
 
@@ -37,8 +37,8 @@ class _BookingRequestScreenState extends State<BookingRequestScreen> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final property = DemoData.getPropertyById(widget.propertyId);
-    final authService = Provider.of<AuthService>(context);
-    final currentUser = authService.currentUser!;
+    final authProvider = Provider.of<AuthProvider>(context);
+    final currentUser = authProvider.currentUser!;
 
     if (property == null) {
       return Scaffold(
@@ -572,8 +572,8 @@ class _BookingRequestScreenState extends State<BookingRequestScreen> {
 
       // Create new booking
       final property = DemoData.getPropertyById(widget.propertyId);
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final currentUser = authService.currentUser!;
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final currentUser = authProvider.currentUser!;
 
       if (property != null) {
         final nights = _checkOutDate!.difference(_checkInDate!).inDays;
@@ -583,7 +583,7 @@ class _BookingRequestScreenState extends State<BookingRequestScreen> {
         final newBooking = DemoBooking(
           id: 'book-${DateTime.now().millisecondsSinceEpoch}',
           propertyId: widget.propertyId,
-          tenantId: currentUser.id,
+          tenantId: currentUser.uuid,
           checkIn: _checkInDate!,
           checkOut: _checkOutDate!,
           guests: _guests,

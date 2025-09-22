@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/services/auth_service.dart';
+import '../../../core/di/service_locator.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/gradient_button.dart';
 import '../../../l10n/app_localizations.dart';
@@ -13,8 +13,8 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final authService = Provider.of<AuthService>(context);
-    final user = authService.currentUser!;
+    final authProvider = Provider.of<AuthProvider>(context);
+    final user = authProvider.currentUser!;
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.profile), centerTitle: true),
@@ -162,7 +162,7 @@ class ProfileScreen extends StatelessWidget {
             GradientButton(
               text: l10n.logout,
               onPressed: () async {
-                await authService.signOut();
+                await authProvider.logout();
               },
               width: double.infinity,
               gradient: const LinearGradient(

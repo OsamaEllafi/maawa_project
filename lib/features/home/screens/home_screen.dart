@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_colors.dart';
-import '../../../core/services/auth_service.dart';
+import '../../../core/di/service_locator.dart';
 import '../../../demo/demo_data.dart';
 import '../../../demo/models.dart';
 import '../widgets/media_carousel.dart';
@@ -80,9 +80,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authService = Provider.of<AuthService>(context);
-    final user = authService.currentUser!;
+    final authProvider = Provider.of<AuthProvider>(context);
+    final user = authProvider.currentUser;
     final screenWidth = MediaQuery.of(context).size.width;
+
+    // Show loading or redirect if user is not available
+    if (user == null) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
 
     // Get demo data
     final properties = _filteredProperties;
@@ -168,8 +177,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 width: 1,
                               ),
                             ),
-                            child: Text(
-                              user.role.name.toUpperCase(),
+                                                    child: Text(
+                          user.role.toString().split('.').last.toUpperCase(),
                               style: Theme.of(context).textTheme.labelSmall
                                   ?.copyWith(
                                     color: AppColors.primaryCoral,

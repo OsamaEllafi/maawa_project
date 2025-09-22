@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum ThemeMode {
+enum AppThemeMode {
   light,
   dark,
   system,
@@ -11,11 +11,11 @@ class ThemeProvider extends ChangeNotifier {
   static const String _themeKey = 'theme_mode';
   static const String _languageKey = 'language_code';
   
-  ThemeMode _themeMode = ThemeMode.system;
+  AppThemeMode _themeMode = AppThemeMode.system;
   String _languageCode = 'en';
   bool _isRTL = false;
 
-  ThemeMode get themeMode => _themeMode;
+  AppThemeMode get themeMode => _themeMode;
   String get languageCode => _languageCode;
   bool get isRTL => _isRTL;
   Locale get locale => Locale(_languageCode);
@@ -29,14 +29,14 @@ class ThemeProvider extends ChangeNotifier {
     final themeIndex = prefs.getInt(_themeKey) ?? 2; // Default to system
     final language = prefs.getString(_languageKey) ?? 'en';
     
-    _themeMode = ThemeMode.values[themeIndex];
+    _themeMode = AppThemeMode.values[themeIndex];
     _languageCode = language;
     _isRTL = language == 'ar';
     
     notifyListeners();
   }
 
-  Future<void> setThemeMode(ThemeMode mode) async {
+  Future<void> setThemeMode(AppThemeMode mode) async {
     if (_themeMode == mode) return;
     
     _themeMode = mode;
@@ -60,11 +60,11 @@ class ThemeProvider extends ChangeNotifier {
 
   bool get isDarkMode {
     switch (_themeMode) {
-      case ThemeMode.light:
+      case AppThemeMode.light:
         return false;
-      case ThemeMode.dark:
+      case AppThemeMode.dark:
         return true;
-      case ThemeMode.system:
+      case AppThemeMode.system:
         final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
         return brightness == Brightness.dark;
     }
@@ -72,11 +72,11 @@ class ThemeProvider extends ChangeNotifier {
 
   String get themeModeName {
     switch (_themeMode) {
-      case ThemeMode.light:
+      case AppThemeMode.light:
         return _languageCode == 'ar' ? 'المظهر الفاتح' : 'Light Mode';
-      case ThemeMode.dark:
+      case AppThemeMode.dark:
         return _languageCode == 'ar' ? 'المظهر الداكن' : 'Dark Mode';
-      case ThemeMode.system:
+      case AppThemeMode.system:
         return _languageCode == 'ar' ? 'مظهر النظام' : 'System Mode';
     }
   }

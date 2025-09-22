@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_colors.dart';
-import '../../../core/services/auth_service.dart';
+import '../../../core/di/service_locator.dart';
 import '../../../demo/demo_data.dart';
 import '../../../demo/models.dart';
 
@@ -46,9 +46,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   }
 
   void _initializeCountdowns() {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final currentUser = authService.currentUser!;
-    final bookings = DemoData.getBookingsForUser(currentUser.id);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final currentUser = authProvider.currentUser!;
+          final bookings = DemoData.getBookingsForUser(currentUser.uuid);
 
     for (final booking in bookings) {
       if (booking.status == BookingStatus.pendingPayment &&
@@ -79,9 +79,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final authService = Provider.of<AuthService>(context);
-    final currentUser = authService.currentUser!;
-    final allBookings = DemoData.getBookingsForUser(currentUser.id);
+    final authProvider = Provider.of<AuthProvider>(context);
+    final currentUser = authProvider.currentUser!;
+    final allBookings = DemoData.getBookingsForUser(currentUser.uuid);
 
     return Scaffold(
       backgroundColor: ThemeColors.getBackground(context),
